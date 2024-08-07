@@ -1,0 +1,34 @@
+version: '3.9'
+
+services:
+  frontend:
+    build:
+      context: ./frontend/my-app  # Context points to the correct directory
+      dockerfile: Dockerfile  # Dockerfile inside the frontend/my-app directory
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/my-app:/app  # Correct volume to point to the app directory
+      - /app/node_modules  # Node modules volume mapping
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # Useful for file change detection in Docker on Mac
+      - BROWSER=none  # Prevent react-scripts from opening the browser
+
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"

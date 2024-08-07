@@ -1,0 +1,8 @@
+#python libraries used in this project
+Flask==3.0.3
+flask-cors
+sqlalchemy 
+psycopg2-binary==2.9.9
+pandas
+geopandas
+geoalchemy2
