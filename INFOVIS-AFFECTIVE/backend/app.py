@@ -13,7 +13,7 @@ def _load_data_to_db():
     with engine.connect() as conn:
         conn.execute(text("DROP TABLE IF EXISTS od_matrix, sci CASCADE;"))
 
-    od_df = pd.read_csv("modified_od_matrix.csv", delimiter=",")
+    od_df = pd.read_csv("dummy_od_matrix.csv", delimiter=",")
     od_df.to_sql("od_matrix", engine, if_exists="replace", index=True)
 
     sci_df = pd.read_csv("sci.csv", delimiter=",")
@@ -40,15 +40,27 @@ def coordify(x):
 
 def query_options(column_name):
     options = _fetch_od_data_from_db(f"SELECT DISTINCT {column_name} FROM od_matrix ORDER BY {column_name} ASC;")
+    options = options.dropna()
     json_data = options.to_json(orient='records')
     return json_data
 
 
 def _aggregate_flows(table):
-    grouped = table.groupby(['origin_city', 'destination_city'])
-    grouped_with_count = grouped.size().reset_index(name='count')
-    merged_df = pd.merge(table, grouped_with_count, on=['origin_city', 'destination_city'], how='left')
+    # Group by 'origin_city' and 'destination_city', and sum 'flow_count'
+    grouped = table.groupby(['origin_city', 'destination_city'])['flow_count'].sum().reset_index()
+
+    # Merge the original table with the aggregated table to retain additional columns
+    merged_df = pd.merge(table, grouped, on=['origin_city', 'destination_city'], how='left', suffixes=('', '_sum'))
+
+    # Drop duplicates based on 'origin_city' and 'destination_city'
     merged_df = merged_df.drop_duplicates(subset=['origin_city', 'destination_city'])
+
+    # Replace the original 'flow_count' with the aggregated 'flow_count_sum'
+    merged_df['flow_count'] = merged_df['flow_count_sum']
+
+    # Drop the 'flow_count_sum' column, as it's no longer needed
+    merged_df = merged_df.drop(columns=['flow_count_sum'])
+
     return merged_df
 
 
@@ -79,7 +91,6 @@ def _create_od_json_data(table):
     for _, row in table.iterrows():
         record = {
             'week': row['week'],
-            'count': row['count'],
             'segment': row['segment'],
             'flow_count': row['flow_count'],
             'origin': {
@@ -96,6 +107,7 @@ def _create_od_json_data(table):
         records.append(record)
     nested_dict['records'] = records
     return nested_dict
+
 
 
 _load_data_to_db()
@@ -117,15 +129,6 @@ def get_options():
         'weeks': weeks
     }
     return jsonify(data)
-
-
-@app.route('/get_query_results', methods=['GET'])
-def get_query_results():
-    query = "SELECT * FROM od_matrix WHERE destination_city = 'GAZIANTEP'"
-    table = _fetch_od_data_from_db(query)
-    table = _aggregate_flows(table)
-    flows = _create_od_json_data(table)
-    return jsonify(data=flows)
 
 
 @app.route('/get_od', methods=['GET'])
@@ -186,14 +189,6 @@ def submit_filters():
   
     return jsonify(response)
 
-
-@app.route('/get_bar_data', methods=['GET'])
-def get_bar_data():
-    table = _fetch_od_data_from_db("SELECT * FROM od_matrix WHERE origin_city = 'Gaziantep'")
-    table = _aggregate_bars(table)
-    data = _create_bar_json_data(table)
-
-    return jsonify(data)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
