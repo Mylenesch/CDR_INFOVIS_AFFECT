@@ -6,7 +6,7 @@ A Human Computer Interaction Thesis Project. These information visualizations we
 2. Download the project.
 3. Unzip the project.
 4. Open either folder INFOVIS-NEUTRAL or INFOVIS-AFFECTIVE in your terminal and type: docker-compose up (this can take a couple of minutes if you do it for the first time)
-5. Go to http://localhost:3000 to view the information visualizaiton.
+5. Go to http://localhost:3000 to view the information visualization.
 
 # Screenshot of the neutral design
 ![image](https://github.com/user-attachments/assets/2bc54acf-5f03-4811-9d75-c90102c0547d)
